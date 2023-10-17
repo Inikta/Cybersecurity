@@ -6,14 +6,15 @@ b = WIDTHS[6]
 w = b // 25
 l = int(math.log2(w))
 
-ba = bitarray.bitarray()
+
 is_in_last_loop = False
 
-def convert_to_bit_array(string : str):
-    ba.frombytes("abcd".encode())
-    #print(ba)
+def convert_to_bit_array(a):
+
+    ba = bitarray.bitarray(endian = 'little')
+    ba.frombytes(a)
     l = ba.tolist()
-    #print(l)
+
     return l
 
 def pad(x, m):
@@ -192,7 +193,7 @@ def sponge(text, d):
     global is_in_last_loop
     is_in_last_loop = True
     while (True):
-        Z.extend(flatten(flatten(S[:r])))
+        Z.extend(flatten(flatten(S))[:r])
         if (d <= len(Z)):
             return Z[:d]
         S = keccak_p(S, nr)
@@ -202,6 +203,8 @@ def flatten(l):
 
 def keccak(text, d):
     return sponge(text, d)
+
+############################################
 
 def to_octos_list(A):
     a = []
@@ -213,10 +216,9 @@ def to_octos_list(A):
 def octos_to_ints_list(A):
     a = []
     for oct in A:
-        num = 1
+        num = 0
         for i in range(len(oct)):
-            if (oct[i] == 1):
-                num += 2**i
+            num |= (oct[i]<<i)
         a.append(num)
     return a
 
@@ -232,19 +234,23 @@ def ints_list_to_chars_list(A):
         a.append(chr(i))
     return a
 
-def main():
-    a = keccak("The quick brown fox jumps over the lazy dog", 256)
-    b = to_octos_list(a)
-    c = octos_to_ints_list(b)
-    d = ints_list_to_bytes_list(c)
-    e = ints_list_to_chars_list(c)
+def bits_to_string(A):
+    a = ''
+    for x in A:
+        a += str(x)
+    return a
 
-    print(a, "\n")
-    print(b, "\n")
-    print(c, "\n")
-    print(d, "\n")
-    print(e, "\n")
+v = bytearray(b'')
 
-main()
+a = keccak(v, 512)
+b = to_octos_list(a)
+c = octos_to_ints_list(b)
+d = ints_list_to_bytes_list(c)
+print(d)
+s = [bytearray(x).hex() for x in c]
+    #e = ints_list_to_chars_list(c)
+print(s, "\n")
 
+print('a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26', '\n')
+#0xed0xea0xad0x500x80xcf0xa0xc50x10x410x10x410x410x410x10x410x10x20x10x20x20x10x10x10x90x190x10x90x190x10x10x110x150x110x10x10x150x50x150x50x810x10x210x10xa10x210xa10x10x20x10x10x10x420x420x20x10x810x10x850x850x50x810x10x81
 
