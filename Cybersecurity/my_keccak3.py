@@ -7,8 +7,6 @@ w = b // 25
 l = int(math.log2(w))
 
 f = open('test.txt', 'w')
-f.close()
-f = open('test.txt', 'w')
 
 def pad(x, m):
     arr = []
@@ -59,6 +57,16 @@ def cube_to_bytes_in_hex(cube):
     
     return byte_str.hex()
 
+def print_step_in_file(A : bitarray.bitarray):
+    byte_str = A.tobytes()
+    hex_str = byte_str.hex()
+    print(byte_str, end='\n' + str(len(byte_str)) + '\n', file=f)
+    for x in range(24):
+        for y in range(8):
+            print(hex_str[x*8+y], end=' ', file=f)
+        print('\n')
+    print(hex_str, end='\n---------\n', file=f)
+
 ############################################
 
 def teta(A : bitarray.bitarray):
@@ -71,11 +79,16 @@ def teta(A : bitarray.bitarray):
 
     for x in range(5):
         for z in range(w):
-            C[w * x + z] = A[x * 5 * w + 0 * w + z] ^ A[x * 5 * w + 1 * w + z] ^ A[x * 5 * w + 2 * w + z] ^ A[x * 5 * w + 3 * w + z] ^ A[x * 5 * w + 4 * w + z]
+            C[w * x + z] = A[x * 5 * w + 0 * w + z] 
+            C[w * x + z] ^= A[x * 5 * w + 1 * w + z]
+            C[w * x + z] ^= A[x * 5 * w + 2 * w + z]
+            C[w * x + z] ^= A[x * 5 * w + 3 * w + z]
+            C[w * x + z] ^= A[x * 5 * w + 4 * w + z]
             
     for x in range(5):
         for z in range(w):
-            D[w * x + z] = C[5*((x-1) % 5) + z] ^ C[5*((x+1) % 5) + ((z-1) % w)]
+            D[w * x + z] = C[((x-1) % 5) * w + z] 
+            D[w * x + z] ^= C[((x+1) % 5) * w + ((z-1) % w)]
 
     for x in range(0, 5):
         for y in range(0, 5):
@@ -83,11 +96,8 @@ def teta(A : bitarray.bitarray):
                 a[x * 5 * w + y * w + z] = A[x * 5 * w + y * w + z] ^ D[w * x + z]
                 
     print('Teta', end='\n', file=f)
-
-    byte_str = a.tobytes()
-    hex_str = byte_str.hex()
-    print(byte_str, end='\n\n', file=f)
-    print(hex_str, end='\n---------\n', file=f)
+    print_step_in_file(a)
+    
     return a
 
 def ro(A : bitarray.bitarray):
@@ -107,10 +117,8 @@ def ro(A : bitarray.bitarray):
             y = ((2*tmp + 3*y) % 5)
     
     print('Ro', end='\n', file=f)            
-    byte_str = a.tobytes()
-    hex_str = byte_str.hex()
-    print(byte_str, end='\n\n', file=f)
-    print(hex_str, end='\n---------\n', file=f)
+    print_step_in_file(a)
+    
     return a
 
 def pi(A : bitarray.bitarray):
@@ -122,10 +130,8 @@ def pi(A : bitarray.bitarray):
                 a[x * 5 * w + y * w + z] = A[((x + 3*y) % 5) * 5 * w + y * w + z]
     
     print('Pi', end='\n', file=f)
-    byte_str = a.tobytes()
-    hex_str = byte_str.hex()
-    print(byte_str, end='\n\n', file=f)
-    print(hex_str, end='\n---------\n', file=f)
+    print_step_in_file(a)
+
     return a
 
 def ksi(A : bitarray.bitarray):
@@ -137,10 +143,8 @@ def ksi(A : bitarray.bitarray):
                 a[x * 5 * w + y * w + z] = A[x * 5 * w + y * w + z] ^ ((A[((x + 1) % 5) * 5 * w + y * w + z] ^ 1) * A[((x + 2) % 5) * 5 * w + y * w + z])
     
     print('Ksi', end='\n', file=f)
-    byte_str = a.tobytes()
-    hex_str = byte_str.hex()
-    print(byte_str, end='\n\n', file=f)
-    print(hex_str, end='\n---------\n', file=f)
+    print_step_in_file(a)
+
     return a
 
 def rc(t):
@@ -175,10 +179,8 @@ def yota(A : bitarray.bitarray, ir):
         a[0 * 5 * w + 0 * w + z] = a[0 * 5 * w + 0 * w + z] ^ RC[z]
 
     print('Yota', end='\n', file=f)
-    byte_str = a.tobytes()
-    hex_str = byte_str.hex()
-    print(byte_str, end='\n\n', file=f)
-    print(hex_str, end='\n---------\n', file=f)
+    print_step_in_file(a)
+
     return a
 
 def rnd_func(A : bitarray.bitarray, ir):
@@ -186,17 +188,16 @@ def rnd_func(A : bitarray.bitarray, ir):
     return result
 
 def keccak_p(S  : bitarray.bitarray, nr):
-    #A = array_to_cube(S)
-
     A = S
     
+    print('Init', end='\n', file=f)
+    print_step_in_file(A)
+
     for ir in range(12 + 2*l - nr, 12 + 2*l - 1):
-        print('\tRound #' + str(ir), end='\n', file=f)
         A = rnd_func(A, ir)
-        byte_str = A.tobytes()
-        hex_str = byte_str.hex()
-        print(byte_str, end='\n\n', file=f)
-        print(hex_str, end='\n---------\n', file=f)
+
+        print('\tRound #' + str(ir), end='\n', file=f)
+        print_step_in_file(A)
         
     return A
 
@@ -246,18 +247,7 @@ def keccak(bytes_data, d):
 ############################################
 
 def main():
-    
-    a : bitarray.bitarray = keccak(b'', 224)
-    
-    byte_str = a.tobytes()
-    hex_str = byte_str.hex()
-    print(byte_str, end='\n\n', file=f)
-    print(hex_str, end='\n---------\n', file=f)    
-
-def test():
-    a = b'abrakadabra'
-    a << 1
-    print(a)
+    a : bitarray.bitarray = keccak(b'', 512)
+    #print_step_in_file(a)   
     
 main()
-#test()

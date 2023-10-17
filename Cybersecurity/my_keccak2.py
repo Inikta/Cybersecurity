@@ -85,6 +85,7 @@ def teta(A):
     bit_arr = bitarray.bitarray(k, endian='little')
     byte_str = bit_arr.tobytes()
     hex_str = cube_to_bytes_in_hex(a)
+
     return a
 
 def ro(A):
@@ -92,12 +93,12 @@ def ro(A):
     for z in range(w):
         a[0][0][z] = A[0][0][z]
 
-    (x, y) = (1, 0)
+    x, y = 1, 0
 
     for t in range (23):
         for z in range(w):
             a[x][y][z] = A[x][y][(z - (t + 1) * (t + 2) // 2) % w]
-            (x, y) = (y, ((2*x + 3*y) % 5))
+            x, y = y, ((2*x + 3*y) % 5)
     
     print('Ro', end='\n', file=f)            
     hex_str = cube_to_bytes_in_hex(a)
@@ -222,7 +223,7 @@ def keccak(bytes_data, d):
 
 def main():
     
-    a = keccak(b'', 256)
+    a = keccak(b'', 512)
     print(a, '\n')
     #b = a.tobytes()
     #print(b, '\n')
