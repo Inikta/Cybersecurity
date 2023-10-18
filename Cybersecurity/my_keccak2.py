@@ -10,34 +10,11 @@ f = open('test.txt', 'w')
 f.close()
 f = open('test.txt', 'w')
 
-def pad(x, m):
-    arr = []
-    arr.append(1)
-    j = 0
-    if (x > 0):
-        j = (-m - 2) % x
-
-    for i in range(j):
-        arr.append(0)
-    arr.append(1)
-    
-    return arr
-
 def xor_lists(X : list, Y : list):
-    seq_len = min(len(X), len(Y))
-    result = []
-    for i in range(seq_len):
-        if (X[i] == Y[i]):
-            result.append(0)
-        else:
-            result.append(1)
+    result = bitarray.bitarray(endian='little')
+    for i in range(len(X)):
+        result.append((X[i] ^ Y[i]))
     return result
-
-def xor(x : int, y : int):
-    if (x == y):
-        return 0
-    else:
-        return 1
 
 def create_empty_cube():
     a = [[[0 for z in range(w)] for y in range(5)] for x in range(5)]
@@ -173,17 +150,10 @@ def keccak_p(S, nr):
         
     return A
 
-def sponge(N : bitarray.bitarray, d):
-    N.extend([0, 1])
-    c = 2 * d
+def sponge(N : bitarray.bitarray, c, d):
     r = b - c
-
     P = N
-    f = len(N)
     P.extend(pad(r, len(N)))
-    byteP = P.tobytes()
-    hexP = byteP.hex()
-    k = len(P)
     n = len(P) // r
 
     nr = 12 + 2*l
@@ -196,34 +166,59 @@ def sponge(N : bitarray.bitarray, d):
     S.setall(0)
 
     for i in range(n):
-        P_list[i].extend(list(0 for j in range(c)))
+        padded_P_chunk = P_list[i]
+        padded_P_chunk.extend(list(0 for j in range(c)))
         S = flatten(flatten(keccak_p(
-            xor_lists(S, P_list[i]),
+            xor_lists(S, padded_P_chunk),
             nr)))
 
-    hex_str = bitarray.bitarray(S, endian='little').tobytes().hex()
     Z = []
     while (True):
         Z.extend(S[:r])
         if (d <= len(Z)):
             a = bitarray.bitarray(Z[:d], endian = 'little')
-            hex_str = a.tobytes().hex()
             return a.tobytes()
         S = flatten(flatten(keccak_p(S, nr)))
+
+def pad(x, m):
+    arr = []
+    arr.append(1)
+    j = 0
+    if (x > 0):
+        j = (-m - 2) % x
+
+    for i in range(j):
+        arr.append(0)
+    arr.append(1)
+    
+    return arr
 
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
-def keccak(bytes_data, d):
+def sha3_X(bytes_data, d):
     a = bitarray.bitarray(endian = 'little')
     a.frombytes(bytes_data)
-    return sponge(a, d)
+    a.extend([0, 1])
+
+    c = d * 2
+
+    return sponge(a, c, d)
+
+def shake_X(bytes_data, d):
+    a = bitarray.bitarray(endian = 'little')
+    a.frombytes(bytes_data)
+    a.extend([1, 1, 1, 1])
+
+    c = d * 2
+
+    return sponge(a, c, d)
 
 ############################################
 
 def main():
     
-    a = keccak(b'', 512)
+    a = sha3_X(b'', 512)
     print(a, '\n')
     #b = a.tobytes()
     #print(b, '\n')
