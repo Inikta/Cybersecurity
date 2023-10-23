@@ -27,38 +27,18 @@ def xor_lists(X : bitarray.bitarray, Y : bitarray.bitarray):
         result.append((X[i] ^ Y[i]))
     return result
 
-def create_empty_cube():
-    a = [[[0 for z in range(w)] for y in range(5)] for x in range(5)]
-    return a
-
-def array_to_cube(P_list):
-    A = create_empty_cube()
-
-    for x in range(5):
-        for y in range(5):
-            for z in range(w):
-                A[x][y][z] = P_list[x * 5 * w + y * w + z]
-    return A
-
-def cube_to_bytes_in_hex(cube):
-    a = flatten(flatten(cube))
-    bit_arr = bitarray.bitarray(a, endian='little')
-    byte_str = bit_arr.tobytes()
-    
-    return byte_str.hex()
-
 def print_step_in_file(A : bitarray.bitarray):
-    k = len(A)
     byte_str = A.tobytes()
-    kb = len(byte_str)
     hex_str = byte_str.hex()
-    kh = len(hex_str)
     print(byte_str, end='\n' + str(len(byte_str)) + '\n', file=f)
-    for x in range(50):
-        for y in range(8):
-            print(hex_str[x*8+y], end='  ', file=f)
-        print('\n')
-    print(hex_str, end='\n---------\n', file=f)
+    for x in range(400):
+        tmp = hex_str[x]
+        print(hex_str[x], end='', file=f)
+        if (x % 2 == 0):
+            print('  ', end='', file=f)
+        if (x % 32 == 0):
+            print('\n', end='', file=f)
+    print('', end='\n---------\n', file=f)
 
 ############################################
 
@@ -72,11 +52,11 @@ def teta(A : bitarray.bitarray):
 
     for x in range(5):
         for z in range(w):
-            C[w * x + z] = A[x * 5 * w + 0 * w + z] 
-            C[w * x + z] ^= A[x * 5 * w + 1 * w + z]
-            C[w * x + z] ^= A[x * 5 * w + 2 * w + z]
-            C[w * x + z] ^= A[x * 5 * w + 3 * w + z]
-            C[w * x + z] ^= A[x * 5 * w + 4 * w + z]
+            C[w * x + z] = A[w * (5 * 0 + x) + z] 
+            C[w * x + z] ^= A[w * (5 * 1 + x) + z]
+            C[w * x + z] ^= A[w * (5 * 2 + x) + z]
+            C[w * x + z] ^= A[w * (5 * 3 + x) + z]
+            C[w * x + z] ^= A[w * (5 * 4 + x) + z]
             
     for x in range(5):
         for z in range(w):
@@ -86,7 +66,7 @@ def teta(A : bitarray.bitarray):
     for x in range(0, 5):
         for y in range(0, 5):
             for z in range(0, w):
-                a[x * 5 * w + y * w + z] = A[x * 5 * w + y * w + z] ^ D[w * x + z]
+                a[w * (5 * y + x) + z] = A[w * (5 * y + x) + z] ^ D[w * x + z]
                 
     print('Teta', end='\n', file=f)
     print_step_in_file(a)
@@ -97,14 +77,14 @@ def ro(A : bitarray.bitarray):
     a = bitarray.bitarray(1600, endian='little')
     a.setall(0)
     for z in range(w):
-        a[0 * 5 * w + 0 * w + z] = A[0 * 5 * w + 0 * w + z]
+        a[w * (5 * 0 + 0) + z] = A[w * (5 * 0 + 0) + z]
 
     x = 1
     y = 0
 
     for t in range (23):
         for z in range(w):
-            a[x * 5 * w + y * w + z] = A[x * 5 * w + y * w + ((z - (t + 1) * (t + 2) // 2) % w)]
+            a[w * (5 * y + x) + z] = A[w * (5 * y + x) + ((z - (t + 1) * (t + 2) // 2) % w)]
             tmp = x
             x = y
             y = ((2*tmp + 3*y) % 5)
@@ -120,7 +100,7 @@ def pi(A : bitarray.bitarray):
     for x in range(0, 5):
         for y in range(0, 5):
             for z in range(0, w):
-                a[x * 5 * w + y * w + z] = A[((x + 3*y) % 5) * 5 * w + y * w + z]
+                a[w * (5 * y + x) + z] = A[5 * ((x + 3 * y) % 5) * w + x * w + z]
     
     print('Pi', end='\n', file=f)
     print_step_in_file(a)
@@ -133,7 +113,7 @@ def ksi(A : bitarray.bitarray):
     for x in range(0, 5):
         for y in range(0, 5):
             for z in range(0, w):
-                a[x * 5 * w + y * w + z] = A[x * 5 * w + y * w + z] ^ ((A[((x + 1) % 5) * 5 * w + y * w + z] ^ 1) * A[((x + 2) % 5) * 5 * w + y * w + z])
+                a[w * (5 * y + x)+ z] = A[w * 5 * y + x * w + z] ^ ((A[w * 5 * y + ((x + 1) % 5) * w + z] ^ 1) * A[w * 5 * y + ((x + 2) % 5) * w + z])
     
     print('Ksi', end='\n', file=f)
     print_step_in_file(a)
@@ -160,7 +140,7 @@ def yota(A : bitarray.bitarray, ir):
     for x in range(0, 5):
         for y in range(0, 5):
             for z in range(0, w):
-                a[x * 5 * w + y * w + z] = A[x * 5 * w + y * w + z]
+                a[w * (5 * y + x) + z] = A[w * (5 * y + x) + z]
 
     RC = bitarray.bitarray(w, endian='little')
     RC.setall(0)
@@ -169,7 +149,7 @@ def yota(A : bitarray.bitarray, ir):
         RC[2**j - 1] = rc(j + 7 * ir)
 
     for z in range(0, w):
-        a[0 * 5 * w + 0 * w + z] = a[0 * 5 * w + 0 * w + z] ^ RC[z]
+        a[w * (5 * 0 + 0) + z] = a[w * (5 * 0 + 0) + z] ^ RC[z]
 
     print('Yota', end='\n', file=f)
     print_step_in_file(a)
@@ -182,7 +162,7 @@ def rnd_func(A : bitarray.bitarray, ir):
 
 def keccak_p(S  : bitarray.bitarray, nr):
     A = S
-    
+    tmp = A.endian()
     print('Init', end='\n', file=f)
     print_step_in_file(A)
 
@@ -244,7 +224,7 @@ def shake_X(bytes_data, d):
 ############################################
 
 def main():
-    a : bitarray.bitarray = sha3_X(b'', 512)
+    a : bitarray.bitarray = sha3_X(b'', 224)
     #print_step_in_file(a)   
     
 main()
