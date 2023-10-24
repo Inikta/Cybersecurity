@@ -30,19 +30,21 @@ def xor_lists(X : bitarray.bitarray, Y : bitarray.bitarray):
 def print_step_in_file(A : bitarray.bitarray):
     byte_str = A.tobytes()
     hex_str = byte_str.hex()
-    print(byte_str, end='\n' + str(len(byte_str)) + '\n', file=f)
+    #print(byte_str, end='\n' + str(len(byte_str)) + '\n', file=f)
     for x in range(400):
         tmp = hex_str[x]
         print(hex_str[x], end='', file=f)
-        if (x % 2 == 0):
+        if (x == 0):
+            continue
+        if (x % 2 == 1):
             print('  ', end='', file=f)
-        if (x % 32 == 0):
+        if (x % 32 == 31):
             print('\n', end='', file=f)
     print('', end='\n---------\n', file=f)
 
 ############################################
 
-def teta(A : bitarray.bitarray):
+def teta(A : bitarray.bitarray):                    #checked!
     a = bitarray.bitarray(1600, endian='little')
     a.setall(0)
     C = bitarray.bitarray(5 * w, endian='little')
@@ -82,12 +84,12 @@ def ro(A : bitarray.bitarray):
     x = 1
     y = 0
 
-    for t in range (23):
+    for t in range (24):
         for z in range(w):
-            a[w * (5 * y + x) + z] = A[w * (5 * y + x) + ((z - (t + 1) * (t + 2) // 2) % w)]
-            tmp = x
+            a[w * (5 * y + x) + z] = A[w * (5 * y + x) + (z - (t + 1) * (t + 2) // 2) % w]
+            prev_x = x
             x = y
-            y = ((2*tmp + 3*y) % 5)
+            y = ((2*prev_x + 3*y) % 5)
     
     print('Ro', end='\n', file=f)            
     print_step_in_file(a)
@@ -225,6 +227,7 @@ def shake_X(bytes_data, d):
 
 def main():
     a : bitarray.bitarray = sha3_X(b'', 224)
+    print(a.tobytes().hex())
     #print_step_in_file(a)   
     
 main()
