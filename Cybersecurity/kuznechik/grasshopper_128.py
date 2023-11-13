@@ -3,6 +3,8 @@ import math as m
 
 BLOCK_SIZE = 16
 
+################################################
+
 def int_to_bitarray(num : int):
     a = ba.bitarray(endian='little')
     a.frombytes(num.to_bytes(1, 'little'))
@@ -14,9 +16,9 @@ def int_array_to_bitarrays(int_arr : [int]):
         arr.append(int_to_bitarray(i))
     return arr
 
-def bytes_to_bitarray(bytenum):
+def bytes_to_bitarray(intnum : int):
     a = ba.bitarray(endian='little')
-    a.frombytes(bytenum)
+    a.frombytes(intnum.to_bytes(length=1, byteorder='little'))
     return a
 
 def byte_array_to_bitarrays(byte_arr):
@@ -24,6 +26,8 @@ def byte_array_to_bitarrays(byte_arr):
     for i in byte_arr:
         arr.append(bytes_to_bitarray(i))
     return arr
+
+################################################
 
 PI = int_array_to_bitarrays(
     [252, 238, 221, 17, 207, 110, 49, 22, 251, 196, 250, 218, 35, 197, 4, 77, 233, 119, 240, 219, 147, 
@@ -73,6 +77,8 @@ REV_PI = byte_array_to_bitarrays([
     0x12, 0x1A, 0x48, 0x68, 0xF5, 0x81, 0x8B, 0xC7,
     0xD6, 0x20, 0x0A, 0x08, 0x00, 0x4C, 0xD7, 0x74
 ])
+
+################################################
 
 def X(a : ba.bitarray, b : ba.bitarray):
     return a^b
@@ -225,3 +231,28 @@ def decript_bits(blk : ba.bitarray):
         out_blk = X(out_blk, ITER_KEY[i])
         
     return out_blk
+
+################################################
+
+def grasshopper_encript(bytes : bytes):
+    in_bits = ba.bitarray(endian='little')
+    in_bits.frombytes(bytes)
+    out_bits = encript_bits(in_bits)
+    return out_bits.tobytes()
+
+def grasshopper_decript(bytes : bytes):
+    in_bits = ba.bitarray(endian='little')
+    in_bits.frombytes(bytes)
+    out_bits = decript_bits(in_bits)
+    return out_bits.tobytes()
+
+def main():
+    
+    message = b'1122334455667700ffeeddccbbaa9988'
+    print("Init message: ", message, '\n')
+    
+    encripted = grasshopper_encript(message)
+    print("Encripted: ", encripted, '\n')
+    
+    decripted = grasshopper_decript(encripted)
+    print("Decripted: ", decripted, '\n')
