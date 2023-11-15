@@ -81,31 +81,43 @@ REV_PI = byte_array_to_bitarrays([
 ################################################
 
 def X(a : ba.bitarray, b : ba.bitarray):
-    return a^b
+    c = ba.bitarray(8 * BLOCK_SIZE, endian='little')
+    for i in range (8 * BLOCK_SIZE):
+        c[i] = a[i] ^ b[i]
+    return c
 
 def S(in_data : ba.bitarray):
     res = ba.bitarray(endian='little')
     for i in range(BLOCK_SIZE):
-        res.extend(PI[i])
+        res.extend(PI[int.from_bytes(in_data[i * 8 : (i + 1) * 8].tobytes(), byteorder='little')])
     return res
 
 def rev_S(in_data : ba.bitarray):
     res = ba.bitarray(endian='little')
     for i in range(BLOCK_SIZE):
-        res.extend(REV_PI[i])
+        res.extend(REV_PI[int.from_bytes(in_data[i * 8 : (i + 1) * 8].tobytes(), byteorder='little')])
     return res
 
-def GF_mul(a : ba.bitarray, b : ba.bitarray):
-    c = ba.bitarray(endian='little')
+def GF_mul(a : ba.bitarray, b : int):
+    c = ba.bitarray(8, endian='little')
+    c.setall(0)
     hi_bit = ba.bitarray(endian='little')
+
+    one = ba.bitarray(8, 'little')
+    one.setall(0)
+    one[7] = 1
+
+    b_bits = ba.bitarray(endian='little')
+    b_bits.frombytes(b.to_bytes(byteorder='little', length=1))
+
     for i in range(8):
-        if (b & 1):
-            c ^= a
+        if (b_bits & one):
+            c = c ^ a
         hi_bit = a & bytes_to_bitarray(0x80)
         a <<= 1
         if hi_bit:
             a ^= bytes_to_bitarray(0xc3)
-        b >>= 1
+        b_bits >>= 1
         
     return c
 
@@ -114,62 +126,76 @@ l_vec = [1, 148, 32, 133, 16, 194, 192, 1, 251, 1, 192, 194, 16, 133, 32, 148]
 def R(state : ba.bitarray):
     vect = ba.bitarray(BLOCK_SIZE * 8, endian='little')
     vect.setall(0)
-    a_15 = ba.bitarray(endian='little')
+    a_15 = ba.bitarray(8, endian='little')
+    a_15.setall(0)
     for i in range(15, 0, -1):
         if (i == 15):
-            vect[(i - 1) * 8 :] = state[(i - 1) * 8 :]
-            a_15 ^= GF_mul(state[(i - 1) * 8 :], l_vec[i])
+            vect[i * 8 :] = state[i * 8 :]
+            a_15 ^= GF_mul(state[i * 8 :], l_vec[i])
         else:
-            vect[(i - 1) * 8 : (i + 1) * 8] = state[(i - 1) * 8 : (i + 1) * 8]
-            a_15 ^= GF_mul(state[(i - 1) * 8 : (i + 1) * 8], l_vec[i])
+            vect[(i - 1) * 8 : i * 8] = state[(i - 1) * 8 : i * 8]
+            a_15 ^= GF_mul(state[(i - 1) * 8 : i * 8], l_vec[i])
     
-    vect[15] = a_15
-    state = vect
+    vect[15 * 8:] = a_15
+    return vect
 
 def rev_R(state : ba.bitarray):
     a_0 = ba.bitarray(endian='little')
-    a_0.extend(state[14 * 8:])
+    a_0 = state[15 * 8:]
     vect = ba.bitarray(BLOCK_SIZE * 8, endian='little')
     for i in range(16):
         if (i == 15):
             vect[i * 8 :] = state[i * 8 :]
-            a_0 ^= GF_mul(vect[i * 8 :], l_vec[i])
+            tmp = GF_mul(vect[i * 8 :], l_vec[i])
+            a_0 = a_0 ^ tmp
         else:
             vect[i * 8 : (i + 1) * 8] = state[i * 8 : (i + 1) * 8]
-            a_0 ^= GF_mul(vect[i * 8 : (i + 1) * 8], l_vec[i])
+            tmp = GF_mul(vect[i * 8 : (i + 1) * 8], l_vec[i])
+            a_0 = a_0 ^ tmp
+
+    return vect
 
 def L(in_data : ba.bitarray):
-    vect = in_data
+    vect = ba.bitarray(endian='little')
+    vect = in_data[:BLOCK_SIZE * 8]
     for i in range(16):
-        R(vect)
-    res = vect
+        vect = R(vect)
+    res = vect[:BLOCK_SIZE * 8]
     return res
 
 def rev_L(in_data : ba.bitarray):
-    vect = in_data
+    vect = ba.bitarray(endian='little')
+    vect = in_data[:BLOCK_SIZE * 8]
     for i in range(16):
         vect = rev_R(vect)
-    res = vect
+    res = vect[:BLOCK_SIZE * 8]
     return res
 
 def prepare_iter_C():
     iter_num = []
     res = []
     for i in range(32):
-        iter_num.append(ba.bitarray(BLOCK_SIZE * 8))
-        iter_num[i][:8] = int_to_bitarray(i + 1)
+        tmp = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+        tmp.setall(0)
+        iter_num.append(tmp)
+        res.append(tmp)
+
+    for i in range(32):
+        tmp2 = int_to_bitarray(i + 1)
+        iter_num[i][:8] = tmp2[:8]
 
     for i in range(32):
         res[i] = L(iter_num[i])
+
     return res
 
 def F(in_key1 : ba.bitarray, in_key2 : ba.bitarray, iter_const : ba.bitarray):
-    out_key1 = ba.bitarray(BLOCK_SIZE, endian='little')
-    out_key2 = ba.bitarray(BLOCK_SIZE, endian='little')
-    vect = ba.bitarray(BLOCK_SIZE, endian='little')
+    out_key1 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    out_key2 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    vect = ba.bitarray(BLOCK_SIZE * 8, endian='little')
     vect.setall(0)
     
-    out_key2 = in_key1
+    out_key2 = in_key1[:BLOCK_SIZE * 8]
     vect = X(in_key1, iter_const)
     vect = S(vect)
     vect = L(vect)
@@ -177,24 +203,31 @@ def F(in_key1 : ba.bitarray, in_key2 : ba.bitarray, iter_const : ba.bitarray):
     
     return [out_key1, out_key2]
 
-def expand_key(key1 : ba.bitarray, key2 : ba.bitarray):
-    iter_key = [None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None,
-                None, None, None, None, None, None, None, None,]
+def expand_key(byte_key1 : bytes, byte_key2 : bytes):
+    key1 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    key1.frombytes(byte_key1)
+
+    key2 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    key2.frombytes(byte_key2)
+
+    iter_key = []
+    for i in range(32):
+        tmp = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+        tmp.setall(0)
+        iter_key.append(tmp)
     
-    iter1 = ba.bitarray(64, endian='little')
-    iter2 = ba.bitarray(64, endian='little')
+    iter1 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    iter2 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
     
-    iter3 = ba.bitarray(64, endian='little')
-    iter4 = ba.bitarray(64, endian='little')
+    iter3 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    iter4 = ba.bitarray(BLOCK_SIZE * 8, endian='little')
     
     iter_C = prepare_iter_C()
     
-    iter_key[0] = key1
-    iter_key[1] = key2
-    iter1 = key1
-    iter2 = key2
+    iter_key[0] = key1[:BLOCK_SIZE * 8]
+    iter_key[1] = key2[:BLOCK_SIZE * 8]
+    iter1 = key1[:BLOCK_SIZE * 8]
+    iter2 = key2[:BLOCK_SIZE * 8]
     
     for i in range(4):
         iter3, iter4 = F(iter1, iter2, iter_C[0 + 8 * i])
@@ -205,12 +238,12 @@ def expand_key(key1 : ba.bitarray, key2 : ba.bitarray):
         iter1, iter2 = F(iter3, iter4, iter_C[5 + 8 * i])
         iter3, iter4 = F(iter1, iter2, iter_C[6 + 8 * i])
         iter1, iter2 = F(iter3, iter4, iter_C[7 + 8 * i])
-        iter_key[2 * i + 2] = iter1
-        iter_key[2 * i + 3] = iter2
+        iter_key[2 * i + 2] = iter1[:BLOCK_SIZE * 8]
+        iter_key[2 * i + 3] = iter2[:BLOCK_SIZE * 8]
         
     return iter_key
     
-ITER_KEY = expand_key()
+ITER_KEY = expand_key(bytes.fromhex('8899aabbccddeeff0011223344556677'), bytes.fromhex('fedcba98765432100123456789abcdef'))
 
 def encript_bits(blk : ba.bitarray):
     out_blk = blk[:BLOCK_SIZE * 8]
@@ -237,7 +270,9 @@ def decript_bits(blk : ba.bitarray):
 def grasshopper_encript(bytes : bytes):
     in_bits = ba.bitarray(endian='little')
     in_bits.frombytes(bytes)
+    tmp1 = len(in_bits)
     out_bits = encript_bits(in_bits)
+    tmp2 = len(out_bits)
     return out_bits.tobytes()
 
 def grasshopper_decript(bytes : bytes):
@@ -256,3 +291,5 @@ def main():
     
     decripted = grasshopper_decript(encripted)
     print("Decripted: ", decripted, '\n')
+
+main()
