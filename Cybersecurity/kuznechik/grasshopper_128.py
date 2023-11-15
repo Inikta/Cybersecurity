@@ -2,7 +2,9 @@ import bitarray as ba
 import math as m
 
 BLOCK_SIZE = 16
+f = open("test_logs.txt", 'w')
 
+min_delim = '------------------------------'
 ################################################
 
 def int_to_bitarray(num : int):
@@ -26,6 +28,15 @@ def byte_array_to_bitarrays(byte_arr):
     for i in byte_arr:
         arr.append(bytes_to_bitarray(i))
     return arr
+
+def print_step_in_file(A : ba.bitarray, prefix, postfix):
+    byte_str = A.tobytes()
+    hex_str = byte_str.hex()
+    print(prefix, end='', file=f)
+    for x in range(len(hex_str)):
+        print(hex_str[x], end='', file=f)
+
+    print('\n', postfix, end='\n', file=f)
 
 ################################################
 
@@ -82,20 +93,26 @@ REV_PI = byte_array_to_bitarrays([
 
 def X(a : ba.bitarray, b : ba.bitarray):
     c = ba.bitarray(8 * BLOCK_SIZE, endian='little')
+    c.setall(0)
     for i in range (8 * BLOCK_SIZE):
         c[i] = a[i] ^ b[i]
+        
     return c
 
 def S(in_data : ba.bitarray):
     res = ba.bitarray(endian='little')
     for i in range(BLOCK_SIZE):
         res.extend(PI[int.from_bytes(in_data[i * 8 : (i + 1) * 8].tobytes(), byteorder='little')])
+    
+    print_step_in_file(res, "\tS: ", min_delim)
     return res
 
 def rev_S(in_data : ba.bitarray):
     res = ba.bitarray(endian='little')
     for i in range(BLOCK_SIZE):
         res.extend(REV_PI[int.from_bytes(in_data[i * 8 : (i + 1) * 8].tobytes(), byteorder='little')])
+    
+    print_step_in_file(res, "\trev_S: ", min_delim)
     return res
 
 def GF_mul(a : ba.bitarray, b : int):
@@ -143,6 +160,7 @@ def rev_R(state : ba.bitarray):
     a_0 = ba.bitarray(endian='little')
     a_0 = state[15 * 8:]
     vect = ba.bitarray(BLOCK_SIZE * 8, endian='little')
+    vect.setall(0)
     for i in range(16):
         if (i == 15):
             vect[i * 8 :] = state[i * 8 :]
@@ -161,6 +179,8 @@ def L(in_data : ba.bitarray):
     for i in range(16):
         vect = R(vect)
     res = vect[:BLOCK_SIZE * 8]
+    
+    print_step_in_file(res, "\tL: ", min_delim)
     return res
 
 def rev_L(in_data : ba.bitarray):
@@ -168,7 +188,9 @@ def rev_L(in_data : ba.bitarray):
     vect = in_data[:BLOCK_SIZE * 8]
     for i in range(16):
         vect = rev_R(vect)
+        
     res = vect[:BLOCK_SIZE * 8]
+    print_step_in_file(res, "\trev_L: ", min_delim)
     return res
 
 def prepare_iter_C():
@@ -185,7 +207,9 @@ def prepare_iter_C():
         iter_num[i][:8] = tmp2[:8]
 
     for i in range(32):
+        print("#{:d}: ".format(i), file=f)
         res[i] = L(iter_num[i])
+        print_step_in_file(res[i], "\titer_num #{:d}: ".format(i), min_delim)
 
     return res
 
@@ -230,17 +254,31 @@ def expand_key(byte_key1 : bytes, byte_key2 : bytes):
     iter2 = key2[:BLOCK_SIZE * 8]
     
     for i in range(4):
+        print("F#{:d}: \n".format(i * 8 + 0), file=f)
         iter3, iter4 = F(iter1, iter2, iter_C[0 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 1), file=f)
         iter1, iter2 = F(iter3, iter4, iter_C[1 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 2), file=f)
         iter3, iter4 = F(iter1, iter2, iter_C[2 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 3), file=f)
         iter1, iter2 = F(iter3, iter4, iter_C[3 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 4), file=f)
         iter3, iter4 = F(iter1, iter2, iter_C[4 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 5), file=f)
         iter1, iter2 = F(iter3, iter4, iter_C[5 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 6), file=f)
         iter3, iter4 = F(iter1, iter2, iter_C[6 + 8 * i])
+        print("F#{:d}: \n".format(i * 8 + 7), file=f)
         iter1, iter2 = F(iter3, iter4, iter_C[7 + 8 * i])
+
         iter_key[2 * i + 2] = iter1[:BLOCK_SIZE * 8]
         iter_key[2 * i + 3] = iter2[:BLOCK_SIZE * 8]
-        
+    
+    print('\n', file=f)
+    for i in range(9):
+        print_step_in_file(iter_key[i], "\tIter_KEY #{:d}: ".format(i), '')
+    print_step_in_file(iter_key[9], "\tIter_KEY #{:d}: ".format(9), '\n+============================+\n')
+    
     return iter_key
     
 ITER_KEY = expand_key(bytes.fromhex('8899aabbccddeeff0011223344556677'), bytes.fromhex('fedcba98765432100123456789abcdef'))
@@ -267,22 +305,53 @@ def decript_bits(blk : ba.bitarray):
 
 ################################################
 
+def pad(chunk : ba.bitarray, n):
+    res = chunk
+    tmp = n - len(chunk)
+    for i in range(n - len(chunk)):
+        res.append(0)
+    
+    return res
+
 def grasshopper_encript(bytes : bytes):
     in_bits = ba.bitarray(endian='little')
     in_bits.frombytes(bytes)
-    tmp1 = len(in_bits)
-    out_bits = encript_bits(in_bits)
-    tmp2 = len(out_bits)
-    return out_bits.tobytes()
+    
+    input_len = len(in_bits)
+    out_bits = ba.bitarray(endian='little')
+    for i in range(input_len // (BLOCK_SIZE * 8) + 1):
+        chunk = in_bits[i * BLOCK_SIZE * 8 : ((i + 1) * BLOCK_SIZE * 8) % (input_len + 1)]
+        if (len(chunk) == 0):
+            continue
+        else:
+            pad_len = BLOCK_SIZE * 8 - len(chunk)
+            chunk = pad(chunk, BLOCK_SIZE * 8)
+            out_bits.extend(encript_bits(chunk))            
+    
+    
+    tmp = out_bits[:len(out_bits) - pad_len]
+    return tmp.tobytes()
 
 def grasshopper_decript(bytes : bytes):
     in_bits = ba.bitarray(endian='little')
     in_bits.frombytes(bytes)
-    out_bits = decript_bits(in_bits)
-    return out_bits.tobytes()
+    
+    input_len = len(in_bits)
+    out_bits = ba.bitarray(endian='little')
+    pad_len = 0
+    for i in range(input_len // (BLOCK_SIZE * 8) + 1):
+        chunk = in_bits[i * BLOCK_SIZE * 8 : ((i + 1) * BLOCK_SIZE * 8) % (input_len + 1)]
+        if (len(chunk) == 0):
+            continue
+        else:
+            pad_len = BLOCK_SIZE * 8 - len(chunk)
+            chunk = pad(chunk, BLOCK_SIZE * 8)
+            out_bits.extend(decript_bits(chunk))
+    
+    tmp = out_bits[:len(out_bits) - pad_len]
+    return tmp.tobytes()
 
 def main():
-    
     message = b'1122334455667700ffeeddccbbaa9988'
     print("Init message: ", message, '\n')
     
