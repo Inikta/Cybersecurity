@@ -320,13 +320,20 @@ def grasshopper_encript(byte_str : bytes, hex_key):
     
     input_len = len(in_bits)
     out_bits = ba.bitarray(endian='little')
+    pad_len = 0
     for i in range(input_len // (BLOCK_SIZE * 8) + 1):
-        chunk = in_bits[i * BLOCK_SIZE * 8 : i * BLOCK_SIZE * 8 + (((i + 1) * BLOCK_SIZE * 8) % (input_len))]
-        #print(chunk.tobytes())
+        #lenghtf = (i == input_len // (BLOCK_SIZE * 8)) ? (input_len) : ((i + 1) * BLOCK_SIZE * 8))
+        len_f = 0
+        if (i == input_len // (BLOCK_SIZE * 8)):
+            len_f = input_len
+        else:
+            len_f = (i + 1) * BLOCK_SIZE * 8
+        
+        chunk = in_bits[i * BLOCK_SIZE * 8 : len_f]
+        pad_len = BLOCK_SIZE * 8 - len(chunk)
         if (len(chunk) == 0):
             continue
         else:
-            pad_len = BLOCK_SIZE * 8 - len(chunk)
             chunk = pad(chunk, BLOCK_SIZE * 8)
             out_bits.extend(encript_bits(chunk))            
     
@@ -348,7 +355,14 @@ def grasshopper_decript(byte_str : bytes, hex_key):
     out_bits = ba.bitarray(endian='little')
     pad_len = 0
     for i in range(input_len // (BLOCK_SIZE * 8) + 1):
-        chunk = in_bits[i * BLOCK_SIZE * 8 : i * BLOCK_SIZE * 8 + (((i + 1) * BLOCK_SIZE * 8) % (input_len))]
+        len_f = 0
+        if (i == input_len // (BLOCK_SIZE * 8)):
+            len_f = input_len
+        else:
+            len_f = (i + 1) * BLOCK_SIZE * 8
+        
+        chunk = in_bits[i * BLOCK_SIZE * 8 : len_f]
+
         if (len(chunk) == 0):
             continue
         else:
@@ -360,13 +374,21 @@ def grasshopper_decript(byte_str : bytes, hex_key):
     return tmp.tobytes()
 
 def main():
-    message = b'1122334455667700ffeeddccbbaa99881'
+    message = [0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80]
+    message = bytes(message)
+    #message = bytes(0x80) in range(255)
+    '''with open('test', '+wb') as fout:
+        fout.write(bytes(0x80 in range(255)))
+    test_file = open("test", mode='+rb')
+    message = test_file.read()'''
+
+
     print("Init message: ", message, '\n')
     
-    encripted = grasshopper_encript(message, 'abfadadabfaabfadadabfaabfadadabffedcba98765432100123456789abcdef')
+    encripted = grasshopper_encript(message, '8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef')
     print("Encripted: ", encripted, '\n')
     
-    decripted = grasshopper_decript(encripted, 'abfadadabfaabfadadabfaabfadadabffedcba98765432100123456789abcdef')
+    decripted = grasshopper_decript(encripted, '8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef')
     print("Decripted: ", decripted, '\n')
 
 main()
