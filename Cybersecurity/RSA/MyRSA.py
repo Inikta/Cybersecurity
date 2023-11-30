@@ -3,7 +3,7 @@ import random
 
 K_ALL = [256, 512, 1024, 2048, 4096]
 E_ALL = [3, 7, 17, 257, 65537]
-E = 101 #E_ALL[0]
+E = 3 #E_ALL[0]
 
 def set_bit(value, bit):
     return value | (1<<bit)
@@ -82,6 +82,23 @@ def mod_inv(b, n):                  #   checked -> fine!
     if (my_gcd == 1):
         return t % n
 
+def findMinX(num, rem, k) :  
+    # Compute product of all numbers  
+    prod = 1
+    for i in range(0, k) :  
+        prod = prod * num[i]  
+  
+    # Initialize result  
+    result = 0
+  
+    # Apply above formula  
+    for i in range(0,k):  
+        pp = prod // num[i]  
+        result = result + rem[i] * mod_inv(pp, num[i]) * pp  
+      
+      
+    return result % prod 
+
 def generate_keys(k_bits):                  #   checked -> fine!
     p = generate_prime(k_bits // 2)
     while (p % E == 1):
@@ -91,33 +108,46 @@ def generate_keys(k_bits):                  #   checked -> fine!
     while (q % E == 1):
         q = generate_prime(k_bits // 2, p)
     
-    p = 1009
-    q = 1013
+    p = 3557
+    q = 2579
     
     N = p * q
     Phi = (p - 1) * (q - 1)
     d = mod_inv(E, Phi)
     
-    return N, E, d
+    return ((N, E), (N, d))
 
-def encript(message : bytes, n : int, e : int):
-    m = int.from_bytes(message, byteorder='big')    # problem is here
-    print(m)
-    c = (m ** e) % n
-    return c
+def encript(message, public_key):
+    n = public_key[0]
+    e = public_key[1]
+    
+    c_list = [((sym ** e) % n) for sym in message]
+    return c_list
 
-def decript(c : int, n : int, d : int):
-    m = (c ** d) % n
-    return m
+def decript(c, private_key):
+    n = private_key[0]
+    d = private_key[1]
+    
+    m_list = [((sym ** d) % n) for sym in c]
+    return m_list
+
+def sign(message):
+    
+    public_key, private_key = generate_keys(32)
+    return encript(message, private_key), public_key
+
+def validate(message_to_check, public_key):
+    v = encript(message_to_check, public_key)
+    
 
 def main():
-    n, e, d = generate_keys(32)
+    public_key, private_key = generate_keys(32)
     
-    message = bytes([0x82, 0x83])
+    message = [111111]#, 0x83, 0x65]
     print("Message: ", message)
-    enc = encript(message, n, e)
+    enc = encript(message, public_key)
     print("Encripted: ", enc)
-    dec = decript(enc, d, e)
+    dec = decript(enc, private_key)
     print("Decripted: ", dec)
 
 main()
