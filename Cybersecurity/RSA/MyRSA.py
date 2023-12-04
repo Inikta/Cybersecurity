@@ -10,6 +10,15 @@ def set_bit(value, bit):
 def clear_bit(value, bit):
     return value & ~(1<<bit)
 
+def fraction_part(to_fraction):
+    ten_exp = 1
+    tmp = to_fraction
+    while(tmp > 0):
+        tmp //= 10
+        ten_exp *= 10
+    
+    return to_fraction / ten_exp
+    
 def miller_rabin_isprime(n):        #   checked -> fine!
     t = n - 1
     s = 0
@@ -80,24 +89,7 @@ def mod_inv(b, n):                  #   checked -> fine!
     my_gcd, _, t = xgcd(n, b)
    
     if (my_gcd == 1):
-        return t % n
-
-def findMinX(num, rem, k) :  
-    # Compute product of all numbers  
-    prod = 1
-    for i in range(0, k) :  
-        prod = prod * num[i]  
-  
-    # Initialize result  
-    result = 0
-  
-    # Apply above formula  
-    for i in range(0,k):  
-        pp = prod // num[i]  
-        result = result + rem[i] * mod_inv(pp, num[i]) * pp  
-      
-      
-    return result % prod 
+        return t % n 
 
 def generate_keys(k_bits):                  #   checked -> fine!
     p = generate_prime(k_bits // 2)
@@ -108,14 +100,18 @@ def generate_keys(k_bits):                  #   checked -> fine!
     while (q % E == 1):
         q = generate_prime(k_bits // 2, p)
     
-    p = 3557
-    q = 2579
+    p = 137
+    q = 131
     
     N = p * q
     Phi = (p - 1) * (q - 1)
     d = mod_inv(E, Phi)
     
-    return ((N, E), (N, d))
+    dP = mod_inv(E, p-1)
+    dQ = mod_inv(E, q-1)
+    qInv = mod_inv(q, p)
+    
+    return ((N, E), (p, q, dP, dQ, qInv))
 
 def encript(message, public_key):
     n = public_key[0]
@@ -125,10 +121,21 @@ def encript(message, public_key):
     return c_list
 
 def decript(c, private_key):
-    n = private_key[0]
-    d = private_key[1]
+    p = private_key[0]
+    q = private_key[1]
+    dP = private_key[2]
+    dQ = private_key[3]
+    qInv = private_key[4]
     
-    m_list = [((sym ** d) % n) for sym in c]
+    #m_list = [((sym ** d) % n) for sym in c]
+    m_list = []
+    for sym in c:
+        m1 = (sym ** dP) % p
+        m2 = (sym ** dQ) % q
+        h = (qInv ** (m1 - m2 + p)) % p
+        l = (m2 + (h ** q)) % (p * q)
+        m_list.append(l)
+    
     return m_list
 
 def sign(message):
@@ -143,7 +150,7 @@ def validate(message_to_check, public_key):
 def main():
     public_key, private_key = generate_keys(32)
     
-    message = [111111]#, 0x83, 0x65]
+    message = [513]#, 0x83, 0x65]
     print("Message: ", message)
     enc = encript(message, public_key)
     print("Encripted: ", enc)
